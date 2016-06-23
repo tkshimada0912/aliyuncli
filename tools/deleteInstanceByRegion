@@ -1,4 +1,10 @@
 #!/bin/sh
+#
+# delete all stopped instances in region
+# 2016.6.23 Takeshi SHIMADA <takeshi.shimada01@g.softbank.co.jp> all rights reserved
+#
+# ./deleteInstanceByRegion cn-beijing
+#
 
 TMPFILE=/tmp/.reglist.$$
 TARGETREG=$1
