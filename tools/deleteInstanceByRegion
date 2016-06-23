@@ -1,0 +1,51 @@
+#!/bin/sh
+
+TMPFILE=/tmp/.reglist.$$
+TARGETREG=$1
+
+if [ -z $TARGETREG ] ; then exit ; fi
+
+# check output format is json or not
+
+FMT=`aliyuncli configure list |grep 'Output' | awk '{print $2}' `
+if [ $FMT != 'json' ]; then
+        echo "Output format is not json"
+        exit 1;
+fi
+
+# check argument is valid region-id or not
+
+REG=`aliyuncli ecs DescribeRegions | jq -r '.Regions.Region[].RegionId'`
+
+CHECK=0
+for R in $REG; do
+	if [ $TARGETREG == $R ]; then CHECK=1; fi
+done
+
+if [ $CHECK -eq 0 ] ; then
+	echo "Assign valid region id.";
+	echo "Regions are:" $REG
+	exit 1;
+fi
+
+# Get Instance list 
+
+aliyuncli ecs DescribeInstanceStatus --RegionId $TARGETREG | jq '.InstanceStatuses.InstanceStatus[].InstanceId' -r > $TMPFILE
+
+echo "Get instance list"
+cat -n $TMPFILE
+
+if [ `wc -l $TMPFILE | awk '{print $1}'` -eq 0 ] ; then
+	echo "No instance defined."
+	rm $TMPFILE
+	exit 0;
+fi
+
+# delete instances
+
+for I in `cat $TMPFILE`; do
+	echo "Delete $I"
+	aliyuncli ecs DeleteInstance --RegionId $TARGETREG --InstanceId $I > /dev/null
+done
+
+rm $TMPFILE

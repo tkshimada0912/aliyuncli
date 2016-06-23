@@ -1,0 +1,138 @@
+#!/usr/bin/perl
+#
+# Aliyun ECS vm startup script
+# 2016.6.23 Takeshi SHIMADA <takeshi.shimada01@g.softbank.co.jp> all rights reserved
+#
+# createEcs --RegionId cn-beijing --ImageId centos7u0_64_40G_aliaegis_20160120.vhd --InstanceType ecs.s1.small --InternetChargeType PayByTraffic --InternetMaxBandwidthOut 20 --InternetMaxBandwidthIn 20
+#
+
+use strict;
+use Net::OpenSSH;
+
+## check output format
+
+my $fmt=`aliyuncli configure list |grep 'Output' | awk \'{print \$2}\' `;
+chomp $fmt;
+if ( $fmt ne 'json' ) {
+	print "Output format is not json\n";
+	exit 1;
+}
+
+# all options send to aliyuncli cmd
+
+my $options=join(' ',@ARGV);
+
+# Region Id check
+
+my $reg=`aliyuncli ecs DescribeRegions | jq -r \'.Regions.Region[].RegionId\'`;
+$options=~/RegionId\s+(\S+)\s*/i;
+my $region=$1;
+
+{ my $check=0;
+	for my $r (split(/\s+/,$reg)) {
+		if ($r eq $region) {$check=1;last}
+	}
+	if ($check == 0) {
+		print "Assign valid region id.\n";
+		print "Regions are: ".join(",",split(/\s+/,$reg))."\n";
+	}
+}
+
+# execute create instance
+
+my $instanceId=`aliyuncli ecs CreateInstance $options | jq -r '.InstanceId'`;
+chomp $instanceId;
+
+if ( $instanceId eq 'null' ) { # failed
+	print "Instane Creation failed. check status.\n";
+	print "CMD: aliyuncli ecs CreateInstance $options\n";
+	exit 1;
+}
+
+print "Defined: $instanceId\n";
+my $InstInfo="--RegionId $region --InstanceId $instanceId";
+
+# assign public ip
+
+my $ipaddr=`aliyuncli ecs AllocatePublicIpAddress $InstInfo | jq -r '.IpAddress'`;
+chomp $ipaddr;
+
+if ( $ipaddr eq 'null' ) { # failed
+	print "Public IP address assignment failure.\n";
+	print "CMD: aliyuncli ecs AllocatePublicIpAddress $InstInfo\n";
+	exit 1;
+}
+
+# assign root password (tempolary)
+
+my $Password;
+while (1) {
+	$Password=join('',map { ("a".."z", "A".."Z", 0..9)[rand 62] }(1..16));
+	if ($Password =~/[A-Z]/ && $Password =~/[a-z]/ && $Password =~/[0-9]/) {last;}
+}
+
+print "Root Password: $Password\n";
+
+my $resp=`aliyuncli ecs ModifyInstanceAttribute --Password \"$Password\" $InstInfo | jq -r '.Code'`;
+
+if ($resp !~/null/) { # fail
+	print "Password setting failed.\n";
+	exit 1;
+}
+
+# start Instance
+
+$resp=`aliyuncli ecs StartInstance $InstInfo | jq -r '.Code'`;
+if ($resp !~/null/) { # fail
+	print "Start Instance failed.\n";
+	exit 1;
+}
+
+# try while SSH enabled
+
+print "Instance Started, waiting for SSH enabled.\n";
+
+my $ssh;
+while (1) {
+	$ssh=Net::OpenSSH->new( $ipaddr , ( user => 'root', password => $Password , timeout => 10, master_opts => [ -o => "StrictHostKeyChecking=no"]));
+	if ($ssh->error) {print "ssh Retry\n"}
+	else {last;}
+}
+
+# create ansible account
+
+my $ssh_key="/root/ssh-key.pub";
+my $setupcmd="./setup.sh";
+
+open(KEY,$ssh_key);
+my $SSH_KEY=<KEY>;
+chomp $SSH_KEY;
+close(KEY);
+
+my @setup=();
+open(SETUP,$setupcmd);
+while (<SETUP>) {
+	$_=~s/%%SSHKEY%%/$SSH_KEY/;
+	push @setup,$_;
+}
+close(SETUP);
+
+open(SETUP,">/tmp/.$$.setup");
+for my $c (@setup) {print SETUP $c}
+close(SETUP);
+
+$ssh->scp_put({},"/tmp/.$$.setup","/tmp/setup.sh");
+if ($ssh->error) {print "Setup Cmd copy fail\n";exit 1;}
+unlink("/tmp/.$$.setup");
+
+my @resp=$ssh->capture("/bin/sh /tmp/setup.sh");
+print @resp;
+
+open(HOSTS,">>hosts");
+print HOSTS "$ipaddr\n";
+close(HOSTS);
+
+print "Server Startup finished.\n";
+
+exit 0;
+
