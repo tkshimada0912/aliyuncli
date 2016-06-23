@@ -6,7 +6,7 @@ RUN curl https://bootstrap.pypa.io/get-pip.py | python&& \
     pip install aliyuncli && pip install aliyun-python-sdk-ecs && pip install aliyun-python-sdk-rds && pip install aliyun-python-sdk-slb && pip install aliyun-python-sdk-oss
 RUN echo -e "source aliyun_zsh_complete.sh\ncomplete -C \`which aliyun_completer\` aliyuncli" > /root/.zshrc
 RUN wget https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -O /usr/local/bin/jq && chmod +x /usr/local/bin/jq
-RUN mkdir /root/.ssh && chmod 700 /root/.ssh && echo -e 'Host *\n\tUser ansible' > /root/.ssh/config
+RUN mkdir /root/.ssh && chmod 700 /root/.ssh && echo -e 'Host *\n\tUser ansible\n\tStrictHostKeyChecking no' > /root/.ssh/config
 COPY ssh-key* /root/
 ARG KEY_ID
 ARG KEY_SECRET
