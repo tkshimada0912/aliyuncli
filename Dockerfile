@@ -1,5 +1,5 @@
 FROM centos
-RUN yum update -y
+RUN yum update -y && ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 RUN yum install -y zsh wget epel-release
 RUN yum install -y ansible openssh-clients perl perl-Net-OpenSSH perl-IO-Pty-Easy
 RUN curl https://bootstrap.pypa.io/get-pip.py | python&& \
