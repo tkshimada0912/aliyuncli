@@ -3,7 +3,11 @@
 # Aliyun ECS vm startup script
 # 2016.6.23 Takeshi SHIMADA <takeshi.shimada01@g.softbank.co.jp> all rights reserved
 #
-# createEcs --RegionId cn-beijing --ImageId centos7u0_64_40G_aliaegis_20160120.vhd --InstanceType ecs.s1.small --InternetChargeType PayByTraffic --InternetMaxBandwidthOut 20 --InternetMaxBandwidthIn 20
+# command line example:
+# ./createEcs --RegionId cn-beijing --ImageId centos7u0_64_40G_aliaegis_20160120.vhd --InstanceType ecs.s1.small --InternetChargeType PayByTraffic --InternetMaxBandwidthOut 20 --InternetMaxBandwidthIn 20
+#
+# in some region, system disk type is mandantory
+# ... --IoOptimized optimized --SystemDiskCategory cloud_efficiency
 #
 
 use strict;
