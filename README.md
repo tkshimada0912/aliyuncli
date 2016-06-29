@@ -1,5 +1,11 @@
 # aliyuncli
 
+<div id="google_translate_element"></div><script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({pageLanguage: 'ja', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+}
+</script><script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 これはAlibabaCloudのECS環境をコマンド一発で構築するための環境をDocker container内に作りあげるモノです。
 
 - aliyuncliが導入されます。
