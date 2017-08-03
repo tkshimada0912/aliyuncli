@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+#
+# get instance stocks from DescribeZones
+#
+#
+use utf8;
+use JSON;
+
+my $getRegionList="docker run -it --rm -v tools:/tools aliyuncli_centos /bin/aliyuncli ecs DescribeRegions";
+my $getZoneList="docker run -it --rm -v tools:/tools aliyuncli_centos /bin/aliyuncli ecs DescribeZones";
+my $regions=`$getRegionList`;
+
+my $data_ref=decode_json($regions);
+my @regions=map {$$_{"RegionId"}} @{$data_ref->{'Regions'}->{'Region'}};
+my @zones;
+
+for my $r (@regions) {
+	my $getzonecmd="$getZoneList --RegionId $r";
+	my $zoneinfo=`$getzonecmd`;
+
+	$data_ref=decode_json($zoneinfo);
+	@zones=@{$data_ref->{'Zones'}->{'Zone'}};
+	for my $z (@zones) {
+		my $zone=$z->{"ZoneId"};
+		print "Checking $zone\n";
+		my @availableinstypes=@{$z->{'AvailableInstanceTypes'}->{'InstanceTypes'}};
+		my @resources=@{$z->{'AvailableResources'}->{'ResourcesInfo'}};
+		my @supins=();
+		for my $res (@resources) {
+			my @s=@{$res->{'InstanceTypes'}->{'supportedInstanceType'}};
+			push @supins,@s;
+		}
+		my %ains=();map {$ains{$_}=1} @availableinstypes;
+		my %sins=();map {$sins{$_}=1} @supins;
+
+		for my $i (sort keys %sins) {
+			if (! defined $ains{$i}) {
+				print "$zone,$i\n";
+			}
+		}
+	}
+}
