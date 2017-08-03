@@ -38,5 +38,6 @@ for my $r (@regions) {
 				print "$zone,$i\n";
 			}
 		}
+		printf("%s %d supported / %d available\n",$zone,scalar keys %sins,scalar keys %ains);
 	}
 }
